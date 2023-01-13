@@ -25,11 +25,16 @@ io.on("connection", socket =>{
     })
     
     socket.on("join-room", name =>{
-        //console.log(name)
+
         prepareForMatch(socket.id, name)
         console.log(players)
        // io.to(socket).emit("room-data", players)
-        io.to(socket.id).emit("room-data", players)
+        io.emit("room-data", players)
+    })
+    socket.on("send-challenge", (challengerName, targetId) =>{
+        //console.log(data)
+        //console.log("incoming challenge for " + data.id + " from " + data.name)
+        io.in(targetId).emit("recieve-challenge", challengerName, socket.id)
     })
     //io.to(socket.id).emit("success")
     
