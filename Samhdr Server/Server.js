@@ -8,18 +8,70 @@ const io = require('socket.io')(port, {cors : {origin : "*"}})
  * Struct { socketId : string, playerName : string, state: int}
  * state : {0 = not ready, 1 = ready, 2 = in a match}
  */
-var players = []
+var playerData = {}
+var keys = []
+/*
+var id ="123"
+var name = "chris"
+var id2 = "345"
+createPlayer(id , name, 1)
+
+console.log(playerData[id].incomingChallenges[id2])
+
+updateIncomingChallenge(id, "conner", id2)
+
+console.log(playerData[id].incomingChallenges[id2])
+
+deleteIncomingChallenge(id, id2)
+
+console.log(playerData[id].incomingChallenges[id2])
+*/
 
 //Updates the player information for a given socket id
-function updatePlayer(id, name, state){
+function createPlayer(id, name, state){
+    playerData[id] = {
+        //"id": id,
+        "name" : name,
+        "state" : state,
+        "incomingChallenges" : {},
+        "challengeKeys" : []
+       // "outGoingChallenges" : {}
+    }
+    keys.push(id)
+    /*
     for (let i = 0; i < players.length; i++){
         if (players[i].id == id){
             players[i].name = name
             players[i].state = state
+            players[i].outgoingChallenges = []
+            players[i].incomingChallenges = []
         }
-    }
+    }*/
+}
+function updatePlayerData(id, key, value){
+    playerData[id][key] = value
 }
 
+function updateIncomingChallenge(challengeeId, challengerName, challengerId){
+    //console.log(playerData[challengeeId].incomingChallenges)
+    playerData[challengeeId].incomingChallenges[challengerId] = challengerName
+    playerData[challengeeId].challengeKeys.push(challengerId)
+}
+function deleteIncomingChallenge(challengeeId, challengerId){
+    delete playerData[challengeeId].incomingChallenges[challengerId]
+    playerData[challengeeId].challengeKeys = playerData[challengeeId].challengeKeys.filter((e) => {return e !== challengerId})
+}
+/*
+function updateOutgoingChallenge(challengerId, challengeeName, challengeeId){
+    playerData[challengerId].outgoingChallenges.push({challengeeId, challengeeName})
+}
+*/
+function clearChallenges(id){
+    playerData[id].incomingChallenges = {}
+    playerData[id].challengeKeys = []
+   // playerData[id].outGoingChallenges = []
+
+}
 /**
  * On Connection:
  * - The server creates a spot for the client on the player list
@@ -28,23 +80,26 @@ function updatePlayer(id, name, state){
 io.on("connection", socket =>{
     //console.log(socket.id)
     //adding the socket to the socket list, but setting it in a "not ready" state
-    players.push({"id" : socket.id, "name":"", "state": 0})
+    createPlayer(socket.id, "", 0)
+    
 
     // On Message: test event that console.logs a message from the socket
     socket.on("message", message => {
         console.log(message)    
     })
     
-    /**
+    /*
      * On Join Room:
      * - Client-side the player has picked a name and set their card selection
      * - Server updates the player's state in the player list to a "ready" state
      * and sends an updated player list to all sockets connected to the server 
      */ 
-    socket.on("join-room", name =>{
-        console.log(players)
-        updatePlayer(socket.id, name, 1)
-        io.emit("room-data", players)
+    socket.on("join-room", (name, state) =>{
+        console.log("***********************JOIN ROOM *****************************")
+        console.log(playerData)
+        updatePlayerData(socket.id, "name", name)
+        updatePlayerData(socket.id, "state", state)
+        io.emit("room-data", playerData, keys)
     })
 
     /**
@@ -54,8 +109,14 @@ io.on("connection", socket =>{
      * being challenged
      * - Emit a "recieve-challenge" message to the player being challenged
      */
-    socket.on("send-challenge", (challengerName, targetId) =>{
-        io.in(targetId).emit("recieve-challenge", challengerName, socket.id)
+    
+    socket.on("send-challenge", (challengerName, challengeeId) =>{
+        updateIncomingChallenge(challengeeId, challengerName, socket.id)
+        //updateOutgoingChallenge(socket.id, challengeeName, challengeeId)
+        console.log("***********************SEND CHALLENGE *****************************")
+        console.log(playerData)
+        io.to(challengeeId).emit("room-data", playerData, keys)
+        io.to(socket.id).emit("room-data", playerData, keys)
     })
 
     /**
@@ -67,6 +128,7 @@ io.on("connection", socket =>{
      * -Send a challenge-accepted message to both players
      * -Update the player list and send a message to all sockets
      */
+    
     socket.on("accept-challenge", (challengeeName, challengerName, challengerID) =>{
 
         //generate a random number (0 - 1): 
@@ -81,11 +143,13 @@ io.on("connection", socket =>{
         io.in(socket.id).emit("challenge-accepted", challengerName, challengerID, challengeeMovesFirst)
 
         //set the player data to reflect that they are in a match
-        updatePlayer(socket.id, challengeeName, 2)
-        updatePlayer(challengerID, challengerName, 2)
+        updatePlayerData(socket.id, "state", 2)
+        clearChallenges(socket.id)
+        updatePlayerData(challengerID, "state", 2)
+        clearChallenges(challengerID)
 
         //update all clients' room data
-        io.emit("room-data", players)
+        io.emit("room-data", playerData, keys)
     })
 
     /**
@@ -94,12 +158,16 @@ io.on("connection", socket =>{
      * - Send a message to the challenger that their request was denied
      * - Send a message to the denier to update their room
      */
-    socket.on("deny-challenge", (denyerName, challengerName, challengerId) =>{
+    
+    socket.on("deny-challenge", (challengerId) =>{
 
+        deleteIncomingChallenge(socket.id, challengerId)
         //sending message to the denied challenger
-        io.in(challengerId).emit("challenge-denied", denyerName, socket.id)
+        //io.in(challengerId).emit("challenge-denied", denyerName, socket.id)
         //sending message to the player who denied the challenge
-        io.in(socket.id).emit("remove-challenger")
+        //io.in(socket.id).emit("remove-challenger")
+        io.in(challengerId).emit("room-data", playerData, keys)
+        io.in(socket.id).emit("room-data", playerData, keys)
     })
 
     //io.to(socket.id).emit("success")
