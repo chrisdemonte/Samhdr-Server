@@ -129,24 +129,31 @@ io.on("connection", socket =>{
      * -Update the player list and send a message to all sockets
      */
     
-    socket.on("accept-challenge", (challengeeName, challengerName, challengerID) =>{
+    socket.on("accept-challenge", (challengeeName, challengerName, challengerId) =>{
 
-        //generate a random number (0 - 1): 
-        // 0 challengee moves second, 1 challengee moves first
-        let challengeeMovesFirst = Math.floor(Math.random * 2)
-        //set challengerMoves first to the opposite value of challengeeMovesFirst
-        let challengerMovesFirst = (challengeeMovesFirst + 1) % 2
+        //incase the challenger has already entered a match with a different player, 
+        //we do not innitiate match
+        if (playerData[challengerId].state === 2){
+            deleteIncomingChallenge(socket.id, challengerId)
+        }
+        else {
+            //generate a random number (0 - 1): 
+            // 0 challengee moves second, 1 challengee moves first
+            let challengeeMovesFirst = Math.floor(Math.random * 2)
+            //set challengerMoves first to the opposite value of challengeeMovesFirst
+            let challengerMovesFirst = (challengeeMovesFirst + 1) % 2
 
-        //send the challenge accepted message to the challenger
-        io.in(challengerID).emit("challenge-accepted", challengeeName, socket.id, challengerMovesFirst)
-        //send the challenge accepted message to the person who was challenged
-        io.in(socket.id).emit("challenge-accepted", challengerName, challengerID, challengeeMovesFirst)
+            //send the challenge accepted message to the challenger
+            io.in(challengerId).emit("challenge-accepted", challengeeName, socket.id, challengerMovesFirst)
+            //send the challenge accepted message to the person who was challenged
+            io.in(socket.id).emit("challenge-accepted", challengerName, challengerId, challengeeMovesFirst)
 
-        //set the player data to reflect that they are in a match
-        updatePlayerData(socket.id, "state", 2)
-        clearChallenges(socket.id)
-        updatePlayerData(challengerID, "state", 2)
-        clearChallenges(challengerID)
+            //set the player data to reflect that they are in a match
+            updatePlayerData(socket.id, "state", 2)
+            clearChallenges(socket.id)
+            updatePlayerData(challengerId, "state", 2)
+            clearChallenges(challengerId)
+        }
 
         //update all clients' room data
         io.emit("room-data", playerData, keys)
