@@ -178,6 +178,12 @@ io.on("connection", socket =>{
     })
 
     //io.to(socket.id).emit("success")
+    socket.on("select-card", (slot, opponentSocket) =>{
+        io.in(opponentSocket).emit("opponent-select-card", slot)
+    })
+    socket.on("used-play-card", (opponentSocket, index, selectedCard)=>{
+        io.in(opponentSocket).emit("opponent-used-play-card", index, selectedCard)
+    })
     
 })
 
