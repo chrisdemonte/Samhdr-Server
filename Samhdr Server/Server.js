@@ -72,6 +72,59 @@ function clearChallenges(id){
    // playerData[id].outGoingChallenges = []
 
 }
+
+function playCardInteraction (offenseCard, defenseCard){
+    let damage_heal = [0,0]
+
+    //if the offense card is a healing card
+    if (offenseCard.suit === 4){
+        //if the defensive card is healing or resistance we mitigate healing
+        if (defenseCard.suit === 4 || defenseCard.suit === 6){
+            damage_heal[1] = offenseCard.value - defenseCard.value
+            // set negative healing to 0
+            if (damage_heal[1] < 0){
+                damage_heal[1] = 0
+            }
+        }
+        //else the healing was not countered
+        else {
+            damage_heal[1] = offenseCard.value
+        }
+        return damage_heal
+    }
+    //else if the offense card suit is a non-healing suit
+    else {
+        //if the offense and defense cards have the same suit, we mitigate damage
+        if (offenseCard.suit === defenseCard.suit){
+            damage_heal[0] = offenseCard.value - defenseCard.value 
+        }
+        //if offensive card is sword or arrow and defense card is defense, we mitigate damage
+        else if ((offenseCard.suit === 1 || offenseCard.suit === 2) && defenseCard.suit === 5){
+            damage_heal[0] = offenseCard.value - defenseCard.value 
+        }
+        //if offensive card is magic and defense card is resistance, we mitigate damage
+        else if (offenseCard.suit === 3 && defenseCard.suit === 6){
+            damage_heal[0] = offenseCard.value - defenseCard.value 
+        }
+        //if offensive card is defense and defensive card is magic or heal, we mitigate damage
+        else if (offenseCard.suit === 5 && (defenseCard.suit === 3 || defenseCard.suit ===4)){
+            damage_heal[0] = offenseCard.value - defenseCard.value 
+        }
+        //if offensive card is resistance and defensive card is sword or arrow, we mitigate damage
+        else if (offenseCard.suit === 6 && (defenseCard.suit === 1 || defenseCard.suit ===2)){
+            damage_heal[0] = offenseCard.value - defenseCard.value 
+        }
+        // the damage was not countered
+        else {
+            damage_heal[0] = offenseCard.value
+        }
+        // set negative damage to no damage
+        if (damage_heal[0] < 0){
+            damage_heal[0] = 0
+        }
+        return damage_heal
+    }
+}
 /**
  * On Connection:
  * - The server creates a spot for the client on the player list
@@ -135,11 +188,13 @@ io.on("connection", socket =>{
         //we do not innitiate match
         if (playerData[challengerId].state === 2){
             deleteIncomingChallenge(socket.id, challengerId)
+            io.to(socket.id).emit("room-data", playerData, keys)
+            return
         }
         else {
             //generate a random number (0 - 1): 
             // 0 challengee moves second, 1 challengee moves first
-            let challengeeMovesFirst = Math.floor(Math.random * 2)
+            let challengeeMovesFirst = Math.floor(Math.random() * 2)
             //set challengerMoves first to the opposite value of challengeeMovesFirst
             let challengerMovesFirst = (challengeeMovesFirst + 1) % 2
 
@@ -183,6 +238,21 @@ io.on("connection", socket =>{
     })
     socket.on("used-play-card", (opponentSocket, index, selectedCard)=>{
         io.in(opponentSocket).emit("opponent-used-play-card", index, selectedCard)
+    })
+    socket.on("end-phase-play-card", (playerCard, opponentCard, opponentSocket) =>{
+        let damage_heal = playCardInteraction( playerCard, opponentCard)
+      //  console.log("player card: " + playerCard)
+       // console.log("opponent card: " + opponentCard)
+        //puts a 3 second delay on the server response so the players get a chance to see what the opponent played
+        setTimeout(
+            () => {
+                // first parameter states who was the offensive player who triggered the end-phase. 1 = player, 0 = opponent
+                io.in(socket.id).emit("end-phase-play-card", 1, damage_heal);
+                io.in(opponentSocket).emit("end-phase-play-card", 0, damage_heal)
+            },
+            3000)
+
+
     })
     
 })
