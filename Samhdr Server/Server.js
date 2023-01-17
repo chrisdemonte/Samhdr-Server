@@ -241,8 +241,6 @@ io.on("connection", socket =>{
     })
     socket.on("end-phase-play-card", (playerCard, opponentCard, opponentSocket) =>{
         let damage_heal = playCardInteraction( playerCard, opponentCard)
-      //  console.log("player card: " + playerCard)
-       // console.log("opponent card: " + opponentCard)
         //puts a 3 second delay on the server response so the players get a chance to see what the opponent played
         setTimeout(
             () => {
@@ -254,6 +252,49 @@ io.on("connection", socket =>{
 
 
     })
-    
+    socket.on("used-play-face-down", (opponentSocket, index, selectedCard)=>{
+        io.in(opponentSocket).emit("opponent-used-play-face-down", index, selectedCard)
+    })
+    socket.on("end-phase-play-face-down", (playerCard, opponentCard, opponentSocket)=>{
+        let pCard = playerCard.card
+        opponentCard.value = Math.ceil(opponentCard.value * 1.5)
+
+        let damage_heal = playCardInteraction(pCard, opponentCard)
+        let counters = [0,0,0,0,0,0,0]
+        if (pCard.suit == 4){
+            counters[4] = damage_heal[1]
+        }
+        else {
+            counters[pCard.suit] = damage_heal[0]
+        }
+        io.in(socket.id).emit("reveal-card", 1)
+        io.in(opponentSocket).emit("reveal-card", 0)
+        setTimeout(
+            () => {
+                // first parameter states who was the offensive player who triggered the end-phase. 1 = player, 0 = opponent
+                io.in(socket.id).emit("end-phase-play-face-down", 1, counters);
+                io.in(opponentSocket).emit("end-phase-play-face-down", 0, counters)
+            },
+            3000)
+    })
+
+    socket.on("used-stack-0", (opponentSocket, cardIndex, selectedCard)=>{
+        io.in(opponentSocket).emit("opponent-used-stack-0", cardIndex)
+    })
+    socket.on("used-stack-1", (opponentSocket)=>{
+        io.in(opponentSocket).emit("opponent-used-stack-1")
+    })
+    socket.on("end-phase-stack", (playerCard, opponentCard, opponentSocket) =>{
+        let damage_heal = (opponentCard, playerCard)
+        console.log("opponent card" + opponentCard.value)
+        console.log("player card" + playerCard.value)
+        setTimeout(
+            () => {
+                // first parameter states who was the offensive player who triggered the end-phase. 1 = player, 0 = opponent
+                io.in(socket.id).emit("end-phase-stack", 1, damage_heal);
+                io.in(opponentSocket).emit("end-phase-stack", 0, damage_heal)
+            },
+            3000)
+    })
 })
 
