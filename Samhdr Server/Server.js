@@ -284,10 +284,18 @@ io.on("connection", socket =>{
     socket.on("used-stack-1", (opponentSocket)=>{
         io.in(opponentSocket).emit("opponent-used-stack-1")
     })
-    socket.on("end-phase-stack", (playerCard, opponentCard, opponentSocket) =>{
-        let damage_heal = (opponentCard, playerCard)
-        console.log("opponent card" + opponentCard.value)
-        console.log("player card" + playerCard.value)
+    socket.on("end-phase-stack", (opponentCard, opponentSocket) =>{
+        
+        let damage_heal = [0,0]
+        if (opponentCard.suit === 4){
+            damage_heal[1] = opponentCard.value
+        }
+        else {
+            damage_heal[0] = opponentCard.value
+        }
+       // console.log("opponent card" + opponentCard.value)
+        
+       // console.log(damage_heal)
         setTimeout(
             () => {
                 // first parameter states who was the offensive player who triggered the end-phase. 1 = player, 0 = opponent
