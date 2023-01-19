@@ -1,5 +1,5 @@
 //const http = require('http')
-const port = 22222
+const port = 2020
 const io = require('socket.io')(port, {cors : {origin : "*"}})
 //const url = require('url')
 
