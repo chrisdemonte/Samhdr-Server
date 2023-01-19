@@ -51,6 +51,10 @@ function createPlayer(id, name, state){
 function updatePlayerData(id, key, value){
     playerData[id][key] = value
 }
+function deletePlayer(socketId){
+    delete playerData[socketId]
+    keys = keys.filter((e)=> {return e !== socketId})
+}
 
 function updateIncomingChallenge(challengeeId, challengerName, challengerId){
     //console.log(playerData[challengeeId].incomingChallenges)
@@ -140,6 +144,19 @@ io.on("connection", socket =>{
     socket.on("message", message => {
         console.log(message)    
     })
+
+    
+    socket.on("disconnect", (reason) =>{
+        if (playerData[socket.id].state === 2){
+            io.in(playerData[socket.id].challengeKeys[0]).emit("opponent-disconnected")
+        }
+        //console.log("Disconnected: " + reason)
+        deletePlayer(socket.id)
+        socket.disconnect()
+        io.emit("room-data", playerData, keys)
+       
+        
+    })
     
     /*
      * On Join Room:
@@ -148,10 +165,11 @@ io.on("connection", socket =>{
      * and sends an updated player list to all sockets connected to the server 
      */ 
     socket.on("join-room", (name, state) =>{
-        console.log("***********************JOIN ROOM *****************************")
-        console.log(playerData)
+        //console.log("***********************JOIN ROOM *****************************")
+        //console.log(playerData)
         updatePlayerData(socket.id, "name", name)
         updatePlayerData(socket.id, "state", state)
+        clearChallenges(socket.id)
         io.emit("room-data", playerData, keys)
     })
 
@@ -166,8 +184,8 @@ io.on("connection", socket =>{
     socket.on("send-challenge", (challengerName, challengeeId) =>{
         updateIncomingChallenge(challengeeId, challengerName, socket.id)
         //updateOutgoingChallenge(socket.id, challengeeName, challengeeId)
-        console.log("***********************SEND CHALLENGE *****************************")
-        console.log(playerData)
+        //console.log("***********************SEND CHALLENGE *****************************")
+        //console.log(playerData)
         io.to(challengeeId).emit("room-data", playerData, keys)
         io.to(socket.id).emit("room-data", playerData, keys)
     })
@@ -186,7 +204,8 @@ io.on("connection", socket =>{
 
         //incase the challenger has already entered a match with a different player, 
         //we do not innitiate match
-        if (playerData[challengerId].state === 2){
+
+        if (playerData[challengerId] === undefined || playerData[challengerId].state === 2){
             deleteIncomingChallenge(socket.id, challengerId)
             io.to(socket.id).emit("room-data", playerData, keys)
             return
@@ -206,8 +225,11 @@ io.on("connection", socket =>{
             //set the player data to reflect that they are in a match
             updatePlayerData(socket.id, "state", 2)
             clearChallenges(socket.id)
+            updateIncomingChallenge(socket.id, challengerName, challengerId)
+
             updatePlayerData(challengerId, "state", 2)
             clearChallenges(challengerId)
+            updateIncomingChallenge(challengerId, challengeeName, socket.id)
         }
 
         //update all clients' room data
@@ -303,6 +325,42 @@ io.on("connection", socket =>{
                 io.in(opponentSocket).emit("end-phase-stack", 0, damage_heal)
             },
             3000)
+    })
+    socket.on("used-wildcard", (opponentSocket, selection, selectedCard)=>{
+        io.in(opponentSocket).emit("opponent-used-wildcard", selection, selectedCard)
+    })
+    socket.on("end-phase-wildcard", (opponentCard, opponentSocket) =>{
+        
+        let damage_heal = [0,0]
+        if (opponentCard.suit === 4){
+            damage_heal[1] = opponentCard.value
+        }
+        else {
+            damage_heal[0] = opponentCard.value
+        }
+       // console.log("opponent card" + opponentCard.value)
+        
+       // console.log(damage_heal)
+        setTimeout(
+            () => {
+                // first parameter states who was the offensive player who triggered the end-phase. 1 = player, 0 = opponent
+                io.in(socket.id).emit("end-phase-wildcard", 1, damage_heal);
+                io.in(opponentSocket).emit("end-phase-wildcard", 0, damage_heal)
+            },
+            3000)
+    })
+    
+    socket.on("player-left-match", ()=>{
+        if (playerData[socket.id].state === 2){
+            io.in(playerData[socket.id].challengeKeys[0]).emit("opponent-disconnected")
+            clearChallenges(playerData[socket.id].challengeKeys[0])
+            updatePlayerData(playerData[socket.id].challengeKeys[0], "state", 0)
+
+            
+        }
+        clearChallenges(socket.id)
+        updatePlayerData(socket.id, "state", 0)
+        io.emit("room-data", playerData, keys)
     })
 })
 
