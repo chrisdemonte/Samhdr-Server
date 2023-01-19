@@ -2,7 +2,7 @@
 const port = 2020
 const io = require('socket.io')(port, {cors : {origin : "*"}})
 //const url = require('url')
-
+console.log("Listening on port "+ port)
 /**
  * An array of player data for the sockets connect to the server
  * Struct { socketId : string, playerName : string, state: int}
