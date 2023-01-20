@@ -6,8 +6,8 @@ const sio = require("socket.io")
 //import { createServer } from "https";
 //import { Server } from "socket.io";
 
-const httpsServer = https.createServer(//{
-  //key: fs.readFileSync("./ssl/samhdr-server-key.pem")
+const httpsServer = https.createServer({
+  key: fs.readFileSync("./ssl/samhdr-public-key.pem")
     
     
  // cert: fs.readFileSync("./ssl/samhdr-server-cert.pem"),
@@ -15,7 +15,7 @@ const httpsServer = https.createServer(//{
  // ca: [
  //   fs.readFileSync("./ssl/samhdr-cert.pem")
  // ]
-//}
+}
 );
 //const io = require('socket.io')(port, {cors : {origin : "*"}})
 const io = new sio.Server(httpsServer, {cors : {origin : "*"}})
