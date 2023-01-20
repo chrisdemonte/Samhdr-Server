@@ -1,5 +1,5 @@
 //const http = require('http')
-const port = 80
+const port = 443
 const io = require('socket.io')(port, {cors : {origin : "*"}})
 //const url = require('url')
 console.log("Listening on port "+ port)
