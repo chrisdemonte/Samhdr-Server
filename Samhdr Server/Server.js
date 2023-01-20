@@ -7,7 +7,7 @@ const sio = require("socket.io")
 //import { Server } from "socket.io";
 
 const httpsServer = https.createServer({
-  key: fs.readFileSync("./ssl/samhdr-sever-key.pem")
+  key: fs.readFileSync("./ssl/samhdr-sever-key-pair.pem")
     
     
  // cert: fs.readFileSync("./ssl/samhdr-server-cert.pem"),
