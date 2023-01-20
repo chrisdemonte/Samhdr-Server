@@ -1,6 +1,24 @@
 //const http = require('http')
-const port = 443
-const io = require('socket.io')(port, {cors : {origin : "*"}})
+const port = 2020
+const fs = require("fs");
+const https = require("https")
+const sio = require("socket.io")
+//import { createServer } from "https";
+//import { Server } from "socket.io";
+
+const httpsServer = https.createServer(//{
+  //key: fs.readFileSync("./ssl/samhdr-server-key.pem")
+    
+    
+ // cert: fs.readFileSync("./ssl/samhdr-server-cert.pem"),
+ // requestCert: true,
+ // ca: [
+ //   fs.readFileSync("./ssl/samhdr-cert.pem")
+ // ]
+//}
+);
+//const io = require('socket.io')(port, {cors : {origin : "*"}})
+const io = new sio.Server(httpsServer, {cors : {origin : "*"}})
 //const url = require('url')
 console.log("Listening on port "+ port)
 /**
@@ -135,7 +153,7 @@ function playCardInteraction (offenseCard, defenseCard){
  * - Server side listeners are added to the connected socket for all socket events
  */
 io.on("connection", socket =>{
-    //console.log(socket.id)
+    console.log("Connected to " + socket.id)
     //adding the socket to the socket list, but setting it in a "not ready" state
     createPlayer(socket.id, "", 0)
     
@@ -363,4 +381,5 @@ io.on("connection", socket =>{
         io.emit("room-data", playerData, keys)
     })
 })
+httpsServer.listen(port)
 
