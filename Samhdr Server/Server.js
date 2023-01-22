@@ -360,9 +360,11 @@ io.on("connection", socket =>{
     
     socket.on("player-left-match", ()=>{
         if (playerData[socket.id].state === 2){
+            
             io.in(playerData[socket.id].challengeKeys[0]).emit("opponent-disconnected")
-            clearChallenges(playerData[socket.id].challengeKeys[0])
-            updatePlayerData(playerData[socket.id].challengeKeys[0], "state", 0)
+            //clearChallenges(playerData[socket.id].challengeKeys[0])
+            //updatePlayerData(playerData[socket.id].challengeKeys[0], "state", 0)
+            
 
             
         }
